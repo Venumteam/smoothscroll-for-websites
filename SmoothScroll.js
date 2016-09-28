@@ -14,6 +14,8 @@
 //
 
 (function () {
+
+if (!document) return false;
   
 // Scroll Variables (tweakable)
 var defaultOptions = {

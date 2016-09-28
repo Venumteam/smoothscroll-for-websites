@@ -15,8 +15,6 @@
 
 (function () {
 
-if (!document) return false;
-  
 // Scroll Variables (tweakable)
 var defaultOptions = {
 
@@ -715,6 +713,7 @@ function SmoothScroll(optionsToSet) {
             options[key] = optionsToSet[key];
 }
 SmoothScroll.destroy = cleanup;
+SmoothScroll.getScrollRoot = getScrollRoot;
 
 if (window.SmoothScrollOptions) // async API
     SmoothScroll(window.SmoothScrollOptions);

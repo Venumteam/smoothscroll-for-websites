@@ -125,7 +125,6 @@ function init() {
     refreshSize = function () {
       if (pendingRefresh) return; // could also be: clearTimeout(pendingRefresh);
       pendingRefresh = setTimeout(function () {
-        console.log('refreshSize')
         if (isExcluded) return; // could be running after cleanup
         fullPageElem = document.getElementById("fullPage")
         fullPageElem.style.height = '0';

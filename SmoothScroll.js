@@ -79,86 +79,89 @@ function initTest() {
  * Sets up scrolls array, determines if frames are involved.
  */
 function init() {
-  
-    if (initDone || !document.body) return;
 
-    initDone = true;
+  var body = document.body;
+  var html = document.documentElement;
+  var windowHeight = window.innerHeight;
+  var scrollHeight = body.scrollHeight;
 
-    var body = document.body;
-    var html = document.documentElement;
-    var windowHeight = window.innerHeight; 
-    var scrollHeight = body.scrollHeight;
-    
-    // check compat mode for root element
-    root = (document.compatMode.indexOf('CSS') >= 0) ? html : body;
-    activeElement = body;
-    
-    initTest();
+  // check compat mode for root element
+  root = (document.compatMode.indexOf('CSS') >= 0) ? html : body;
+  activeElement = body;
 
-    // Checks if this script is running in a frame
-    if (top != self) {
-        isFrame = true;
+  initTest();
+
+  // Checks if this script is running in a frame
+  if (top != self) {
+    isFrame = true;
+  }
+
+  /**
+   * Please duplicate this radar for a Safari fix!
+   * rdar://22376037
+   * https://openradar.appspot.com/radar?id=4965070979203072
+   *
+   * Only applies to Safari now, Chrome fixed it in v45:
+   * This fixes a bug where the areas left and right to
+   * the content does not trigger the onmousewheel event
+   * on some pages. e.g.: html, body { height: 100% }
+   */
+  else if (scrollHeight > windowHeight &&
+    (body.offsetHeight <= windowHeight ||
+    html.offsetHeight <= windowHeight)) {
+    var fullPageElem;
+
+    if (!initDone || !document.body) {
+      fullPageElem = document.createElement('div');
+      fullPageElem.setAttribute("id", "fullPage")
+      fullPageElem.style.cssText = 'position:absolute; z-index:-10000; ' +
+        'top:0; left:0; right:0; height:' +
+        root.scrollHeight + 'px';
+      document.body.appendChild(fullPageElem);
     }
 
-    /**
-     * Please duplicate this radar for a Safari fix! 
-     * rdar://22376037
-     * https://openradar.appspot.com/radar?id=4965070979203072
-     * 
-     * Only applies to Safari now, Chrome fixed it in v45:
-     * This fixes a bug where the areas left and right to 
-     * the content does not trigger the onmousewheel event
-     * on some pages. e.g.: html, body { height: 100% }
-     */
-    else if (scrollHeight > windowHeight &&
-            (body.offsetHeight <= windowHeight || 
-             html.offsetHeight <= windowHeight)) {
+    // DOM changed (throttled) to fix height
+    var pendingRefresh;
+    refreshSize = function () {
+      if (pendingRefresh) return; // could also be: clearTimeout(pendingRefresh);
+      pendingRefresh = setTimeout(function () {
+        console.log('refreshSize')
+        if (isExcluded) return; // could be running after cleanup
+        fullPageElem = document.getElementById("fullPage")
+        fullPageElem.style.height = '0';
+        fullPageElem.style.height = root.scrollHeight + 'px';
+        pendingRefresh = null;
+      }, 500); // act rarely to stay fast
+    };
 
-        var fullPageElem = document.createElement('div');
-        fullPageElem.style.cssText = 'position:absolute; z-index:-10000; ' +
-                                     'top:0; left:0; right:0; height:' + 
-                                      root.scrollHeight + 'px';
-        document.body.appendChild(fullPageElem);
-        
-        // DOM changed (throttled) to fix height
-        var pendingRefresh;
-        refreshSize = function () {
-            if (pendingRefresh) return; // could also be: clearTimeout(pendingRefresh);
-            pendingRefresh = setTimeout(function () {
-                if (isExcluded) return; // could be running after cleanup
-                fullPageElem.style.height = '0';
-                fullPageElem.style.height = root.scrollHeight + 'px';
-                pendingRefresh = null;
-            }, 500); // act rarely to stay fast
-        };
-  
-        setTimeout(refreshSize, 10);
+    setTimeout(refreshSize, 10);
 
-        addEvent('resize', refreshSize);
+    addEvent('resize', refreshSize);
 
-        // TODO: attributeFilter?
-        var config = {
-            attributes: true, 
-            childList: true, 
-            characterData: false 
-            // subtree: true
-        };
+    // TODO: attributeFilter?
+    var config = {
+      attributes: true,
+      childList: true,
+      characterData: false
+      // subtree: true
+    };
 
-        observer = new MutationObserver(refreshSize);
-        observer.observe(body, config);
+    observer = new MutationObserver(refreshSize);
+    observer.observe(body, config);
 
-        if (root.offsetHeight <= windowHeight) {
-            var clearfix = document.createElement('div');   
-            clearfix.style.clear = 'both';
-            body.appendChild(clearfix);
-        }
+    if (root.offsetHeight <= windowHeight && !initDone) {
+      initDone = true;
+      var clearfix = document.createElement('div');
+      clearfix.style.clear = 'both';
+      body.appendChild(clearfix);
     }
+  }
 
-    // disable fixed background
-    if (!options.fixedBackground && !isExcluded) {
-        body.style.backgroundAttachment = 'scroll';
-        html.style.backgroundAttachment = 'scroll';
-    }
+  // disable fixed background
+  if (!options.fixedBackground && !isExcluded) {
+    body.style.backgroundAttachment = 'scroll';
+    html.style.backgroundAttachment = 'scroll';
+  }
 }
 
 /**
@@ -713,7 +716,7 @@ function SmoothScroll(optionsToSet) {
             options[key] = optionsToSet[key];
 }
 SmoothScroll.destroy = cleanup;
-SmoothScroll.getScrollRoot = getScrollRoot;
+SmoothScroll.initialize = init;
 
 if (window.SmoothScrollOptions) // async API
     SmoothScroll(window.SmoothScrollOptions);
